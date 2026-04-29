@@ -34,7 +34,8 @@ After extraction the directory will contain:
 
     ui-sequence-call-1.0.0-jar-with-dependencies.jar
     UISequenceCall.properties
-    run.cmd
+    run.cmd                    (cmd / double-click launcher)
+    run.ps1                    (PowerShell launcher; passes any args to the jar)
     version.txt
     deploy\
         register_task.ps1
@@ -72,10 +73,12 @@ ui.button.label are HTML-escaped at startup so use plain text.
 ============================================================
 STEP 3 (OPTION A): RUN MANUALLY
 ============================================================
-Double-click run.cmd in the install directory, OR from a terminal:
+Three equivalent ways:
 
-    cd <install-dir>
-    java -jar ui-sequence-call-1.0.0-jar-with-dependencies.jar
+  * Double-click run.cmd in the install directory, OR
+  * From PowerShell:    .\run.ps1     (any extra args pass through to the jar)
+  * From any terminal:  cd <install-dir>
+                        java -jar ui-sequence-call-1.0.0-jar-with-dependencies.jar
 
 Open http://localhost:8080/sequence in a browser. Ctrl-C to stop.
 

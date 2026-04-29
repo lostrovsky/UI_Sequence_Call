@@ -56,8 +56,10 @@ Copy-Item $jar "$STAGE_DIR\ui-sequence-call-1.0.0-jar-with-dependencies.jar"
 # so it's already safe to ship as-is.
 Copy-Item "$PROJECT_ROOT\UISequenceCall.properties" "$STAGE_DIR\UISequenceCall.properties"
 
-# Manual-run launcher (lives next to the jar in the install dir).
+# Manual-run launchers (live next to the jar in the install dir).
+# run.cmd for cmd / double-click; run.ps1 for PowerShell users.
 Copy-Item "$PROJECT_ROOT\run.cmd" "$STAGE_DIR\run.cmd"
+Copy-Item "$PROJECT_ROOT\run.ps1" "$STAGE_DIR\run.ps1"
 
 # Service scripts and user guide
 $deployDst = "$STAGE_DIR\deploy"
