@@ -111,11 +111,21 @@ WHERE o.name = 'seq_UI_Test';
 
 Uses Task Scheduler. Achieves auto-start at boot, restart-on-crash, runs as SYSTEM, stdout/stderr captured. Not technically a Windows service (won't show in services.msc), but delivers all the practical benefits.
 
-`deploy/` contains:
-- `install.ps1` -- interactive installer; copies jar + properties to a target dir, generates `run.cmd` for manual launches, optionally chains into `register_task.ps1` (`-RegisterTask` flag). Idempotent: existing UISequenceCall.properties is preserved on re-install.
-- `register_task.ps1` -- registers the scheduled task. Generates a small `service_run.cmd` wrapper in the install dir that handles stdout/stderr redirection, then registers a Task Scheduler task pointed at it. Settings: AtStartup trigger, RunAsUser=SYSTEM (configurable), RestartCount=999 / RestartInterval=1m, ExecutionTimeLimit=Zero (no time limit). Resolves java.exe via PATH or $env:JAVA_HOME unless `-JavaPath` is passed. Requires elevation.
-- `unregister_task.ps1` -- stop + Unregister-ScheduledTask. Doesn't delete install dir or logs (operator's job).
-- `INSTALL.txt` -- step-by-step user guide.
+**No installer.** The release zip ships a flat layout that the user just extracts to the install directory. No copy step, no separate "install" concept. Whichever directory the jar runs from is the install dir.
+
+Layout in the release zip:
+- `ui-sequence-call-1.0.0-jar-with-dependencies.jar`
+- `UISequenceCall.properties` (operator edits this in place)
+- `run.cmd` -- static launcher (uses `%~dp0` for cwd, calls `java -jar`)
+- `version.txt`
+- `deploy/`:
+  - `register_task.ps1` -- registers the scheduled task. Generates a `service_run.cmd` wrapper in the install dir that handles stdout/stderr redirection, then registers a Task Scheduler task pointed at it. Settings: AtStartup trigger, RunAsUser=SYSTEM (configurable), RestartCount=999 / RestartInterval=1m, ExecutionTimeLimit=Zero. Resolves java.exe via PATH or `$env:JAVA_HOME` unless `-JavaPath` is passed. Requires elevation.
+  - `unregister_task.ps1` -- stop + Unregister-ScheduledTask. Doesn't delete install dir or logs.
+  - `INSTALL.txt` -- step-by-step user guide.
+
+Flow: extract zip -> edit properties -> either double-click `run.cmd` (manual) or run `deploy\register_task.ps1 -InstallDir <path> -StartImmediately` from elevated PowerShell (service mode).
+
+Why no installer: this is a single-jar service with one config file. An installer was over-engineered for that. Originally added one (mirror of Pipeline project's pattern) but that pattern earns its keep when you have multiple folders + DDL migrations to set up. For UI_Sequence_Call a copy step adds friction without value.
 
 Three log files end up in the install dir at runtime:
 - `UISequenceCall.log` -- java.util.logging output (app + Javalin + Jetty via SLF4J->JUL bridge). The most useful one for debugging.

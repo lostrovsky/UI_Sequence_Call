@@ -15,4 +15,6 @@
 - [x] Configurable port (`http.port` + `--port=`) and URL paths (`ui.path` + `api.path`, with `--ui-path=` / `--api-path=` overrides). API path injected into HTML at startup via `__API_PATH__` placeholder.
 - [x] Configurable UI copy: `ui.title`, `ui.subtitle`, `ui.button.label`. HTML-escaped at startup so &, <, >, etc. are safe.
 - [x] Default page (`/`) returns plain-text status with discovery URLs; the form is at `ui.path` (default `/sequence`), not at root.
-- [x] Windows service install via Task Scheduler -- no third-party tools. `deploy/install.ps1` + `register_task.ps1` + `unregister_task.ps1` + `INSTALL.txt`. Auto-start at boot, restart-on-crash, runs as SYSTEM, stdout/stderr captured.
+- [x] Windows service install via Task Scheduler -- no third-party tools. `deploy/register_task.ps1` + `unregister_task.ps1` + `INSTALL.txt`. Auto-start at boot, restart-on-crash, runs as SYSTEM, stdout/stderr captured.
+- [x] Drop `deploy/install.ps1` -- it was over-engineered for a single-jar service. Release zip now ships a flat layout (jar + properties + `run.cmd` + `deploy/` scripts) that the operator extracts directly to their install directory. No copy step.
+- [x] `ui.subtitle` allows raw HTML (links, `<br>`, `<strong>`, etc.); `ui.title` and `ui.button.label` remain HTML-escaped.

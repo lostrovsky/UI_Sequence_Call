@@ -11,7 +11,10 @@
 # Requires elevation (admin) -- registering a SYSTEM-account task
 # is a privileged operation.
 #
-# Usage:
+# Prerequisite: extract the release zip to your install location and edit
+# UISequenceCall.properties with real DB credentials. Then run this script
+# pointing at that location:
+#
 #   .\register_task.ps1 -InstallDir <path> [-TaskName UISequenceCall]
 #                      [-JavaPath <path>] [-RunAsUser SYSTEM]
 #                      [-StartImmediately]
