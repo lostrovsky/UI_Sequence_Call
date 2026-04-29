@@ -199,10 +199,10 @@ public class UISequenceCall {
             }
             String raw = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             return raw
-                    .replace(P_API_PATH,     apiPath)             // already path-validated, no escape needed
-                    .replace(P_UI_TITLE,     htmlEscape(title))
-                    .replace(P_UI_SUBTITLE,  htmlEscape(subtitle))
-                    .replace(P_UI_BTN_LABEL, htmlEscape(buttonLabel));
+                    .replace(P_API_PATH,     apiPath)               // already path-validated, no escape needed
+                    .replace(P_UI_TITLE,     htmlEscape(title))     // <title> tag -- escape (no HTML allowed)
+                    .replace(P_UI_SUBTITLE,  subtitle == null ? "" : subtitle) // raw HTML allowed
+                    .replace(P_UI_BTN_LABEL, htmlEscape(buttonLabel)); // <button> -- escape
         }
     }
 
