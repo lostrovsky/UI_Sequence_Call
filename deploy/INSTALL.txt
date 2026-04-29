@@ -1,0 +1,156 @@
+============================================================
+UI Sequence Call -- Install / Service Setup
+============================================================
+
+This service runs as a long-running Java process. You can run it:
+  - Manually in a console (double-click run.cmd or `java -jar ...`)
+  - Or as a Windows Task Scheduler task that auto-starts at boot
+    and restarts on crash (no third-party tools required).
+
+Both modes share the same two artifacts: the fat jar and the
+properties file. Pick one mode per machine.
+
+============================================================
+PREREQUISITES
+============================================================
+* Java 21 JRE or JDK installed and either on PATH or accessible
+  via $env:JAVA_HOME.
+* SQL Server reachable from this machine, with sequence object
+  dbo.seq_UI_Test (or whichever values you set in the properties).
+* For the Task Scheduler mode: PowerShell 5.1+ run as Administrator.
+
+============================================================
+STEP 1: BUILD (one time, on the build machine)
+============================================================
+From the project root:
+
+    cd C:\Users\lostrovsky\VSCode_Projects\UI_Sequence_Call
+    mvn clean package -DskipTests
+
+This produces:
+    target\ui-sequence-call-1.0.0-jar-with-dependencies.jar
+    target\UISequenceCall.properties
+
+============================================================
+STEP 2: INSTALL (on the target machine)
+============================================================
+Copy the entire project folder (or just `target\` and `deploy\`)
+to the target machine, then in an elevated PowerShell:
+
+    cd <project-root>\deploy
+    .\install.ps1
+
+You'll be prompted for the install directory (default:
+C:\Tools\UI_Sequence_Call). The installer:
+  * Creates the directory
+  * Copies the jar
+  * Copies UISequenceCall.properties (only if not already there)
+  * Generates run.cmd next to the jar for manual launches
+
+If UISequenceCall.properties already exists at the target,
+the installer DOES NOT overwrite it -- your edits are safe.
+
+============================================================
+STEP 3: CONFIGURE
+============================================================
+Edit <install-dir>\UISequenceCall.properties:
+
+    # Database -- must match a real SQL Server instance
+    db.url=jdbc:sqlserver://<host>:1433;databaseName=<db>;trustServerCertificate=true;
+    db.user=<user>
+    db.password=<password>
+
+    # HTTP service
+    http.port=8080
+    ui.path=/sequence
+    api.path=/api/next-sequence
+
+    # UI copy (HTML-escaped at startup -- safe to include &, <, >, etc.)
+    ui.title=UI Sequence Call
+    ui.subtitle=Click the button to fetch the next value from the configured SQL Server sequence.
+    ui.button.label=Get Next Sequence Number
+
+    # Sequence target
+    sequence.schema=dbo
+    sequence.name=seq_UI_Test
+
+============================================================
+STEP 4 (OPTION A): RUN MANUALLY
+============================================================
+Double-click run.cmd in the install directory, OR:
+
+    cd <install-dir>
+    java -jar ui-sequence-call-1.0.0-jar-with-dependencies.jar
+
+Open http://localhost:8080/sequence in a browser. Ctrl-C to stop.
+
+============================================================
+STEP 4 (OPTION B): REGISTER AS A SCHEDULED TASK
+============================================================
+From an elevated PowerShell, in the deploy folder:
+
+    .\install.ps1 -TargetDir "C:\Tools\UI_Sequence_Call" -RegisterTask -StartTask
+
+Or, if the install step is already done, just register the task:
+
+    .\register_task.ps1 -InstallDir "C:\Tools\UI_Sequence_Call" -StartImmediately
+
+The task is named "UISequenceCall" (override with -TaskName), runs
+as SYSTEM (override with -RunAsUser), and is configured to:
+  * Auto-start at system boot
+  * Restart on crash, every 1 minute, up to 999 times
+  * Have no execution time limit (runs forever)
+  * Capture stdout -> service_stdout.log
+  * Capture stderr -> service_stderr.log
+  * (Java's own log: UISequenceCall.log -- contains application + Jetty/Javalin output)
+
+After registration:
+    Get-ScheduledTask     -TaskName UISequenceCall   # status
+    Get-ScheduledTaskInfo -TaskName UISequenceCall   # last run / result
+    Start-ScheduledTask   -TaskName UISequenceCall
+    Stop-ScheduledTask    -TaskName UISequenceCall
+
+To remove the task cleanly (does NOT delete the install dir):
+
+    .\unregister_task.ps1 -TaskName UISequenceCall
+
+============================================================
+STEP 5: VERIFY
+============================================================
+Open in a browser:
+    http://localhost:8080/sequence
+
+Click the button. You should see "Sequence: <number>". Each click
+returns the next value from dbo.seq_UI_Test.
+
+Or from the command line:
+    curl http://localhost:8080/api/next-sequence
+    -> {"value":<n>}
+
+Service status check (when running as a task):
+    Get-ScheduledTaskInfo -TaskName UISequenceCall
+    -> LastTaskResult of 0 = OK / running
+
+============================================================
+TROUBLESHOOTING
+============================================================
+* Service starts then dies -- check service_stderr.log and
+  UISequenceCall.log in the install directory.
+* "Port already in use" -- another process is using 8080. Change
+  http.port in UISequenceCall.properties and restart the task.
+* "Cannot connect to DB" -- verify db.* settings; from the install
+  directory run `java -jar ... --log-output=console` once manually
+  to see the connect error live.
+* "Run as Administrator" required -- you tried to register the
+  task from a non-elevated PowerShell. Right-click PowerShell ->
+  Run as Administrator.
+
+============================================================
+ROLLBACK / UNINSTALL
+============================================================
+1. Stop and remove the scheduled task (if registered):
+       .\unregister_task.ps1
+2. Delete the install directory (e.g., C:\Tools\UI_Sequence_Call).
+   No registry entries, no system-wide changes -- the task and
+   the install directory are the entire footprint.
+============================================================
