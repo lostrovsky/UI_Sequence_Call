@@ -52,6 +52,7 @@ UI_Sequence_Call/
 | `http.port` | `8080` | Override at runtime via `--port=<n>` |
 | `sequence.schema` | `dbo` | Validated against `^[a-zA-Z_][a-zA-Z0-9_]*$` before SQL concat |
 | `sequence.name` | `seq_UI_Test` | Same validation |
+| `api.rate_limit.per_minute` | `10` | Per-IP rate limit on API endpoint. 0 disables. Other endpoints (form, root) not rate-limited. |
 
 ## CLI
 

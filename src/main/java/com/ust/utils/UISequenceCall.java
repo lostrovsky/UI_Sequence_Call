@@ -1,6 +1,7 @@
 package com.ust.utils;
 
 import io.javalin.Javalin;
+import io.javalin.http.util.NaiveRateLimit;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -8,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -89,6 +91,8 @@ public class UISequenceCall {
             String uiSubtitle = firstNonBlank(config.get("ui.subtitle"),     DEFAULT_UI_SUBTITLE);
             String uiBtnLabel = firstNonBlank(config.get("ui.button.label"), DEFAULT_UI_BUTTON_LABEL);
 
+            int rateLimitPerMin = parseRateLimit(config.get("api.rate_limit.per_minute"));
+
             String schema = config.get("sequence.schema");
             String name   = config.get("sequence.name");
             if (schema == null || schema.isBlank()) {
@@ -120,13 +124,21 @@ public class UISequenceCall {
 
             app.get(uiPath, ctx -> ctx.contentType("text/html").result(formHtml));
 
+            int finalRateLimitPerMin = rateLimitPerMin;
             app.get(apiPath, ctx -> {
+                // Per-IP rate limit: throws HttpResponseException(429) past the threshold.
+                // 0 disables.
+                if (finalRateLimitPerMin > 0) {
+                    NaiveRateLimit.requestPerTimeUnit(ctx, finalRateLimitPerMin, TimeUnit.MINUTES);
+                }
                 try {
                     long value = sequence.next();
                     ctx.json(Map.of("value", value));
                 } catch (Exception e) {
+                    // Don't leak DB error details to clients (schema names, login state, etc.).
+                    // Full stack lands in UISequenceCall.log; client sees a generic message.
                     logger.log(Level.SEVERE, "Sequence query failed", e);
-                    ctx.status(500).json(Map.of("error", e.getMessage()));
+                    ctx.status(500).json(Map.of("error", "Internal error -- see server log"));
                 }
             });
 
@@ -136,6 +148,9 @@ public class UISequenceCall {
             logger.info("UI Sequence Call service started on port " + port);
             logger.info("Form: http://localhost:" + port + uiPath);
             logger.info("API:  http://localhost:" + port + apiPath);
+            logger.info("Rate limit: " + (rateLimitPerMin > 0
+                    ? rateLimitPerMin + " request(s) per minute per client IP"
+                    : "disabled (api.rate_limit.per_minute=0)"));
         } catch (Exception e) {
             if (logger != null) {
                 logger.log(Level.SEVERE, "Startup failed", e);
@@ -172,6 +187,18 @@ public class UISequenceCall {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid http.port: " + value);
+        }
+    }
+
+    /** Parses api.rate_limit.per_minute. Default 10. 0 (or blank) disables rate limiting. */
+    private static int parseRateLimit(String value) {
+        if (value == null || value.isBlank()) return 10;
+        try {
+            int n = Integer.parseInt(value.trim());
+            if (n < 0) throw new IllegalArgumentException("api.rate_limit.per_minute must be >= 0; got: " + value);
+            return n;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid api.rate_limit.per_minute: " + value);
         }
     }
 
