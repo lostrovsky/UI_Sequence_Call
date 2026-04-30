@@ -10,9 +10,9 @@ Also read memory files for user preferences and cross-session context:
 
 ## What this project is
 
-Long-running HTTP service (embedded Jetty via Javalin). Serves a one-button HTML form at `/` and exposes a single API endpoint `/api/next-sequence` that returns the next value from a SQL Server sequence object (`dbo.seq_UI_Test` by default).
+Long-running HTTP service (embedded Jetty via Javalin). Serves a one-button HTML form at `/sequence` (configurable via `ui.path`) and exposes a JSON API endpoint at `/api/next-sequence` (configurable via `api.path`) that returns the next value from a SQL Server sequence object (`dbo.seq_UI_Test` by default). Root URL `/` returns a plain-text status page with discovery links -- the form is deliberately not at root.
 
-Single self-contained jar. Client requirement: web browser only.
+Single self-contained jar. Client requirement: web browser only. No third-party tools needed for Windows service install (uses Task Scheduler).
 
 ## Sibling projects (UST utils style)
 
